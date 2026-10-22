@@ -1,0 +1,83 @@
+<figure><img src="https://raw.githubusercontent.com/leohokumura/hokumura-artes/main/2026-10-22-php2shell/capa-substack.jpg" alt="PHP2Shell: atualize o PHP hoje"></figure>
+<p><strong>Alerta em três linhas</strong></p>
+<p><strong>O que é.</strong> Duas falhas no próprio PHP, batizadas de PHP2Shell (CVE-2026-109618 e CVE-2026-109619), permitem que um atacante execute código no servidor sem precisar de login ou senha. A gravidade é crítica: CVSS 9.2, segundo Google Cloud e Wiz.</p>
+<p><strong>Quem é afetado.</strong> Toda instalação de PHP que atende páginas web, do PHP 5.4 até o 8.5.11 (Google Cloud). Isso inclui sites em WordPress, Drupal e Joomla, e também produtos de terceiros que trazem PHP embutido.</p>
+<p><strong>O que fazer hoje.</strong> Atualizar para 8.5.12, 8.4.27, 8.3.36 ou 8.2.35, as versões corrigidas publicadas em 21/10 no php.net. Quem está no 8.1 ou anterior não vai receber correção: precisa subir de versão ou tirar o sistema do ar até corrigir, como orienta a CISA.</p>
+<p>O resto deste texto explica por que a urgência é real, traz um checklist numerado que você pode encaminhar ao seu time agora e mostra como conduzir a resposta com as práticas de gestão de serviços que a sua operação já conhece.</p>
+<h2>Por que este alerta merece prioridade</h2>
+<p>O PHP roda em cerca de 70% dos sites do mundo, segundo a Wiz. Os pesquisadores da Wiz descreveram as duas falhas como algumas das mais graves da história do PHP, de acordo com a Help Net Security. Eles também disseram que modelos de IA de fronteira baixaram muito a barreira para construir o exploit. Em outras palavras: menos gente precisa de muito conhecimento para transformar a falha em ataque.</p>
+<p>Segundo relato publicado pela Help Net Security, um exploit funcional dispara o ataque com uma única requisição, sem autenticação, antes de qualquer código da sua aplicação rodar. A Wiz confirmou execução remota de código sem autenticação contra WordPress e Drupal, e contra Joomla em uma das cadeias de ataque.</p>
+<p>Sobre exploração real, o quadro pede atenção, sem pânico. O honeypot MadPot, da Amazon, registrou uma tentativa de exploração em 17/10/2026, quatro dias antes da divulgação. Já a CISA, na data do alerta (21/10), ainda não tinha observado exploração. Ainda dá para corrigir antes de uma exploração em massa, mas essa janela costuma ser curta.</p>
+<p>A linha do tempo, segundo a Wiz: a primeira falha foi encontrada em 19/08/2026, reportada ao projeto PHP em 24/08, e a correção com a divulgação saiu em 21/10.</p>
+<h2>A falha explicada para quem decide</h2>
+<p>Você não precisa ler código para entender o risco. O php.net descreve as duas causas assim (traduzo para a linguagem de gestão):</p>
+<p><strong>Primeira falha (CVE-2026-109618).</strong> Quando o PHP fica sem memória no meio de uma requisição, ele pode parar com dados internos montados pela metade. Na limpeza que vem depois, ele trata esses dados incompletos como se fossem válidos.</p>
+<p><strong>Segunda falha (CVE-2026-109619).</strong> Parte do estado interno de uma requisição continua existindo depois que a memória foi liberada. A requisição seguinte, atendida pelo mesmo processo, pode usar esse estado antigo.</p>
+<p>Pense num balcão de atendimento que é arrumado às pressas entre um cliente e outro. Se sobra a ficha do cliente anterior em cima da mesa, o próximo pode usar o que não era dele. É esse resto que o atacante aproveita para assumir o servidor. A Google Cloud também aponta vazamento de memória do processo, e a Wiz informa que esse ataque de vazamento funciona mesmo que a aplicação nunca chame session_start.</p>
+<p>O detalhe que mais importa para o gestor: a falha está abaixo da aplicação. Não adianta perguntar ao time se o código do sistema está seguro. O problema está no motor que executa esse código.</p>
+<h2>Quem está exposto</h2>
+<p>Segundo a Help Net Security, toda instalação PHP que atende requisições web está no escopo:</p>
+<ol>
+<li><p>PHP FPM;</p></li>
+<li><p>Apache com mod_php (o cenário de maior risco);</p></li>
+<li><p>PHP CGI;</p></li>
+<li><p>FrankenPHP;</p></li>
+<li><p>LiteSpeed.</p></li>
+</ol>
+<p>E aqui mora o ponto cego. A CISA lembra que o PHP muitas vezes é componente de outro software e pode não estar visível. O efeito cascata já começou: em 22/10, a Palo Alto Networks confirmou que todas as versões do sistema dos seus firewalls e do Panorama são afetadas, ainda sem correção. A Fortinet analisa 12 produtos e a Cisco, 31 (Help Net Security). Ou seja, a sua exposição pode estar num equipamento de rede, num portal de fornecedor ou numa hospedagem que ninguém da sua equipe administra diretamente.</p>
+<h2>Checklist para encaminhar ao time hoje</h2>
+<p>Copie, cole no chamado ou no email e defina um dono para cada item.</p>
+<ol>
+<li><p><strong>Inventário.</strong> Levante tudo que roda PHP: servidores próprios, CMS, hospedagens, imagens de container, appliances e produtos de terceiros com PHP embutido (CISA).</p></li>
+<li><p><strong>Priorização.</strong> Comece pelo que está exposto à internet (CISA).</p></li>
+<li><p><strong>Atualização.</strong> Suba para 8.5.12, 8.4.27, 8.3.36 ou 8.2.35, conforme o ramo em uso.</p></li>
+<li><p><strong>Containers.</strong> Atualizar o pacote não basta: reconstrua as imagens e reimplante (Google Cloud).</p></li>
+<li><p><strong>Conferência.</strong> Confirme a versão que de fato atende a web, e não só a que aparece na linha de comando, porque podem ser instalações diferentes.</p></li>
+<li><p><strong>Repositórios de pacotes.</strong> Confira se o seu repositório já publicou a versão corrigida. O repositório Remi (rpms.remirepo.net), por exemplo, não tinha atualização no dia do lançamento.</p></li>
+<li><p><strong>Hospedagem gerenciada e WordPress.</strong> Peça ao provedor a confirmação, por escrito, de que a correção já foi aplicada.</p></li>
+<li><p><strong>Fornecedores.</strong> Cobre posição formal de quem entrega produto com PHP embutido, começando pelos fabricantes que já se manifestaram (Palo Alto Networks, Fortinet, Cisco).</p></li>
+<li><p><strong>Teste.</strong> A Searchlight Cyber lançou em 22/10 um scanner de código aberto que testa hosts para as duas falhas. Use só em ambientes da sua empresa e com autorização.</p></li>
+<li><p><strong>Monitoramento.</strong> Ative a vigilância dos sinais de ataque listados mais abaixo.</p></li>
+</ol>
+<h2>PHP 8.1 ou anterior: a decisão que não pode esperar</h2>
+<p>Aqui a mensagem precisa ser direta. O projeto PHP não vai lançar correção para o 8.1 nem para versões anteriores, porque elas estão em fim de vida. Restam três caminhos:</p>
+<ol>
+<li><p><strong>Subir para o 8.2 ou superior.</strong> É a saída recomendada (de preferência 8.3 ou superior, pelo prazo do 8.2 explicado abaixo).</p></li>
+<li><p><strong>Falar com o fornecedor de suporte estendido</strong>, seja a sua distribuição Linux ou um fornecedor de suporte pago, e confirmar se ele vai entregar a correção e quando.</p></li>
+<li><p><strong>Tirar o sistema do ar até corrigir.</strong> É a orientação da CISA para quem não consegue atualizar, e o NCSC, do Reino Unido, diz o mesmo.</p></li>
+</ol>
+<p>Um aviso para quem escolher o 8.2: ele chega ao fim de vida em 31/12/2026 (php.net). Quem sobe para ele agora já precisa planejar a próxima atualização.</p>
+<h2>Mitigação temporária: ganha tempo, não resolve</h2>
+<p>O php.net é claro: "não há mitigações completas, atualizar é a única escolha segura". Dito isso, há o que fazer enquanto a atualização não chega a todos os sistemas:</p>
+<ol>
+<li><p><strong>WAF com as regras do fornecedor.</strong> A Cloudflare publicou regras para os vetores conhecidos, inclusive no plano gratuito. Quem usa Google Cloud tem o Cloud Armor.</p></li>
+<li><p><strong>Regras de upload de arquivo e limite de tamanho do corpo da requisição.</strong> É a recomendação da Google Cloud, porque o ataque pode usar cargas grandes para provocar a falta de memória.</p></li>
+</ol>
+<p>Trate essas medidas como um curativo com prazo de validade. Elas cobrem os vetores conhecidos hoje. A correção continua obrigatória.</p>
+<h2>Sinais de ataque para monitorar</h2>
+<p>A Wiz e a CISA apontam estes sinais:</p>
+<ol>
+<li><p>Requisições multipart incomuns seguidas de erros de limite de memória ou de HTTP 500 repetidos;</p></li>
+<li><p>Cookies PHPSESSID grandes ou malformados;</p></li>
+<li><p>Processos de trabalho do PHP reiniciando sem explicação;</p></li>
+<li><p>Processos PHP abrindo shell ou baixando ferramentas.</p></li>
+</ol>
+<p>Atenção: os logs da aplicação podem mostrar pouco, porque a falha acontece abaixo dela. Olhe também os logs do servidor web, do WAF e do sistema operacional.</p>
+<h2>A leitura de gestão de serviços</h2>
+<p>Uma vulnerabilidade como essa testa menos o time de segurança e mais a maturidade da operação inteira. Cinco práticas que você já tem no papel entram em campo agora.</p>
+<p><strong>Mudança emergencial.</strong> A atualização do PHP nos sistemas expostos é o caso clássico de mudança emergencial: risco alto, prazo curto. Acione a autoridade de mudança emergencial, registre a mudança com plano de retorno e teste mínimo, e não deixe o pedido entrar na fila normal do comitê. O registro pode ser enxuto. O que não pode é ficar sem registro, porque é ele que mostra depois o que foi alterado, quando e por quem.</p>
+<p><strong>Inventário e gestão de configuração.</strong> O primeiro item do checklist é o mais difícil para quem não tem a base de configuração em dia. A frase da CISA ("o PHP muitas vezes é componente de outro software e pode não estar visível") é um teste direto da sua CMDB: ela responde em minutos onde há PHP, em qual versão e quem é o dono? Se a resposta for não, a correção vai começar por uma caça manual. Anote essa lacuna, porque ela vai aparecer de novo na próxima falha.</p>
+<p><strong>Incidente de segurança.</strong> Enquanto não há sinal de ataque, a correção é mudança. Se algum dos sinais acima aparecer, o caso passa a ser incidente de segurança: abra o registro, isole o servidor se necessário, preserve os logs antes de reiniciar ou reconstruir qualquer coisa e envolva o responsável por segurança. Corrigir sem investigar pode apagar a evidência de que alguém já entrou.</p>
+<p><strong>Comunicação com o negócio.</strong> Tirar um sistema do ar ou abrir uma janela de manutenção fora do horário é uma decisão que cabe ao negócio. Leve ao dono do serviço três informações: o risco (execução de código sem senha, gravidade crítica), o que será feito e quanto tempo de indisponibilidade isso pode causar. Para sistemas em 8.1 ou anterior, apresente as três saídas e peça a decisão com prazo.</p>
+<p><strong>Cobrança de fornecedores.</strong> Para produtos com PHP embutido, a correção não está nas suas mãos. Peça a cada fornecedor uma posição formal: o produto é afetado? Há correção? Quando? Qual a mitigação até lá? Registre as respostas e acompanhe como qualquer pendência com terceiros. A Palo Alto Networks já confirmou impacto, e Fortinet e Cisco ainda analisam seus produtos, o que indica que esta lista pode crescer nos próximos dias.</p>
+<h2>Para fechar</h2>
+<p>O PHP2Shell tem correção publicada, e isso já é boa notícia. O risco agora está na distância entre a correção existir e ela chegar a cada servidor, a cada container e a cada equipamento de fornecedor. Quem fecha essa distância primeiro é a operação que sabe o que tem, decide rápido e registra o que fez.</p>
+<p>Sou Certified CISO, EXIN ISFS e ITIL Master, e é justamente nesse encontro entre segurança e gestão de serviços que a Hokumura atua. Se você quer estruturar inventário, mudança emergencial e resposta a incidentes para a próxima falha crítica, visite www.hokumura.com.br.</p>
+<h2>Fontes</h2>
+<ol>
+<li><p><a href="https://www.php.net/">Anúncios de 21/10/2026 do projeto PHP</a></p></li>
+<li><p><a href="https://www.cisa.gov/news-events/alerts/2026/10/21/critical-vulnerabilities-php-require-immediate-patching">Alerta da CISA de 21/10/2026</a></p></li>
+<li><p><a href="https://www.helpnetsecurity.com/2026/10/21/php2shell-php-vulnerabilities-patched-cve-2026-109618-cve-2026-109619/">Help Net Security, 21/10/2026</a></p></li>
+<li><p><a href="https://cloud.google.com/blog/products/identity-security/responding-to-core-php-vulnerabilities-cve-2026-109618-cve-2026-109619">Google Cloud: resposta às vulnerabilidades do PHP</a></p></li>
+<li><p><a href="https://www.wiz.io/blog/php2shell-php-rce">Wiz: pesquisa do PHP2Shell</a></p></li>
+</ol>
